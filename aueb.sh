@@ -22,20 +22,16 @@
 
 # Environment vars {{{
 FOSS_AUEB="http://foss.aueb.gr/"	
-
 PREFIX="/tmp/aueb"
 LOG="${PREFIX}/aueb.log"
 BUILD_DIR="${PREFIX}/aueb_pkg_src"
 BUILD_FLAGS="--prefix=/usr LDFLAGS=\"-Wl,--no-as-needed\""
-
 # wifi log files
 WPAERR="${PREFIX}/wpa_aueb.err"
 WPALOG="${PREFIX}/wpa_aueb.log"
 WPACONF="/etc/wpa_supplicant/wpa_aueb.conf"
-
 # 3rd party packages installation destination
 VENDORS_DIR="/opt"
-
 # Package Managers installation/removal of apps
 declare -A PMSI
 PMSI=(	[ubuntu]="apt-get install"
@@ -43,7 +39,6 @@ PMSI=(	[ubuntu]="apt-get install"
 declare -A PMSR
 PMSR=(	[ubuntu]="apt-get remove"
 		[arch]="pacman -Rs" )
-
 # Applications throught the PMS
 declare -A APPS
 APPS=(	[common]="netbeans scilab geany nmap tcsh wireshark"
@@ -51,13 +46,11 @@ APPS=(	[common]="netbeans scilab geany nmap tcsh wireshark"
 		[arch]="openjdk6 base-devel wireless_tools wpa_supplicant" 
 		[build]="omnet spim" 
 		[extra]="xampp" )
-
 # }}}
 
 # TODO crete arch-like vars for each package, the idea is that
 # each parckege will be a function that resets the vars (url/pkgname/etc)
 # applications that need to be built from source ~ custom function-packages {{{
-
 function omnet() {
 	pkgname="omnetpp"
 	pkgver=4.1
@@ -329,10 +322,11 @@ EOF
 
 # try to close running network managers
 function handle_nm() {
-	[ "$1" == "start" ] && local action="start" || local action="stop"
+	local action RC_PATH
+	[ "$1" == "start" ] && action="start" || action="stop"
 	# find the initscripts
-	[ -e "/etc/rc.d" ] && local RC_PATH="/etc/rc.d"
-	[ -e "/etc/init.d" ] && local RC_PATH="/etc/init.d"
+	[ -e "/etc/rc.d" ] && RC_PATH="/etc/rc.d"
+	[ -e "/etc/init.d" ] && RC_PATH="/etc/init.d"
 	[ -z "$RC_PATH" ] && echo "where are the init scripts stored ?" && return
 	# check for common network managers
 	[ -e "$RC_PATH/networkmanager" ] && "$RC_PATH/networkmanager" status
