@@ -1,7 +1,7 @@
 aueb-utils
 ==========
 This script can be used to install any packages related to
-[aueb](http://aueb.gr) [CS department](http://www.cs.aueb.gr)
+[AUEB](http://aueb.gr) [CS department](http://www.cs.aueb.gr)
 university projects, and manage the wireless connection
 provided by the university.
 
@@ -10,7 +10,7 @@ Software
 Install the required software needed for our university
 projects to your Linux Distro.
 
-	$ aueb install
+	# aueb packages install
 	> installing build-essentials ..
 	> installing java-jdk ..
 	[..]
@@ -20,18 +20,28 @@ Networking
 ----------
 Easily connect to the wireless network, offered by the university.
 
-	$ aueb.sh wifi connect
+	$ sudo aueb wifi up
 	==> connected to aueb-wireless
-	$ aueb.sh wifi disconnect
+	$ sudo aueb wifi down
 	==> disconnected from aueb-wireless
 
 Notice
 ------
-* This script requires root priviledges
-* Currently supported distros are "ArchLinux" and "Ubuntu"
-* The installed software may not be free or Open Source, check the licenses.
+* This script requires root priviledges. Run as **root**, or through `sudo`.
+* Currently supported distributions are "ArchLinux" and "Ubuntu".
+* The installed software may not be free or open source, check the licenses.
 
 License
 -------
-The beer-ware license
+
+### The beer-ware license
+
+    /*
+     * ----------------------------------------------------------------------------
+     * "THE BEER-WARE LICENSE" (Revision 42):
+     * <phk@FreeBSD.ORG> wrote this file. As long as you retain this notice you
+     * can do whatever you want with this stuff. If we meet some day, and you think
+     * this stuff is worth it, you can buy me a beer in return Poul-Henning Kamp
+     * ----------------------------------------------------------------------------
+     */
 
