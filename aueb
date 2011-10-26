@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+exit() {
+    aueb
+    builtin exit ${1:-0}
+}
+
 aueb() {
     cat << EOM
 -----------------------
@@ -24,7 +29,7 @@ usage: aueb option suboption
   notes:
     a) if your wireless interface is not 'wlan0' then
     set the IFACE variable to your interface name, eg;
-      IFACE="ath0" aueb wifi up
+      sudo IFACE="ath0" ./aueb wifi up
     b) you may need to turn off any running network
     managers to let wifi work.
 EOM
@@ -34,17 +39,17 @@ detect_dist() {
     printf " ** %s\n" "Detecting distribution .."
     dist="$(head -1 -q /etc/*release | sed 's/.*"\(.\+\)".*/\1/' \
         | tr [[:upper:]] [[:lower:]])"
-    confirm_dist $dist && return 0
+    confirm_dist && return 0
 
     type lsb_release &>/dev/null && dist="$(lsb_release -i \
         | awk -F':\t' '{ print $2 }' | tr [[:upper:]] [[:lower:]])"
-    confirm_dist $dist && return 0 \
+    confirm_dist && return 0 \
         || printf "\n ** %s\n" "Couldn't detect distribution" && return 1
 }
 
 confirm_dist() {
     local answer
-    printf "Is this your distribution: %s (Y/n)? " "$1" && read answer
+    printf "Is this your distribution: %s (Y/n)? " "$dist" && read answer
     [[ -z $answer || $answer =~ ^[yY]$ ]] && return 0 || return 1
 }
 
@@ -65,8 +70,7 @@ choose_dist() {
                 break
                 ;;
             0)
-                aueb
-                exit 0
+                exit
                 ;;
             *)
                 printf " --> Unknown choice: %s. Please try again.\n" "$choice"
@@ -75,7 +79,48 @@ choose_dist() {
     done
 }
 
-create_profile() {
+install_extra() {
+    # FIXME
+    echo "Install Extra"
+    case $dist in
+        arch)
+            # TODO:
+            # download package from AUR
+            # unpack && makepkg
+            # pacman -U
+            ;;
+        ubuntu)
+            for pkg in ${packages["extra-${dist}"]}; do
+                # FIXME or create .deb packages ~ similar to arch/AUR
+                make install $pkg
+            done
+            ;;
+    esac
+    for pkg in ${packages["extra-both"]}; do
+        # FIXME
+        make install $pkg
+    done
+}
+
+uninstall_extra() {
+    case $dist in
+        arch)
+            ${uninstaller["$dist"]} ${packages["extra-${dist}"]}
+            ;;
+        ubuntu)
+            for pkg in ${packages["extra-${dist}"]}; do
+                # FIXME or remove .deb ~ similar to arch/AUR
+                make uninstall $pkg
+            done
+            ;;
+    esac
+    for pkg in ${packages["extra-both"]}; do
+        # FIXME
+        make uninstall $pkg
+    done
+}
+
+create_wifi_profile() {
     [[ -e $wificonf ]] && return
     cat > "$wificonf" << EOF
 ctrl_interface=${PREFIX}/wpa_aueb
@@ -94,7 +139,10 @@ network={
 EOF
 }
 
-(( UID )) && printf " --> %s\n" "You must have root priviledges to run this script" && aueb && exit 1
+# TODO: uncomment on deploy
+# (( UID )) && printf " --> %s\n" "You must have root priviledges to run this script" >&2 && exit 1
+
+dist=
 
 case $1 in
     packages)
@@ -108,26 +156,28 @@ case $1 in
         )
         declare -A packages
         packages=( [common]="netbeans geany nmap scilab tcsh wireshark"
-                   [ubuntu]="openjdk-6-jdk build-essential wireless-tools wpasupplicant"
                    [arch]="openjdk6 base-devel wireless_tools wpa_supplicant"
+                   [extra-arch]="nessus omnetpp4 xampp" ## AUR
+                   [ubuntu]="openjdk-6-jdk build-essential wireless-tools wpasupplicant nessus"
+                   [extra-ubuntu]="omnetpp xampp"
+                   [extra-both]="quartus"
         )
-        dist=
 
         case $2 in
             install)
                 detect_dist || choose_dist
-                printf " ** Running: %s\n" "${installer["$dist"]} ${packages["common"]} ${packages["$dist"]}" \
-                    && { printf " ==> %s\n" "Software ready to use"; aueb; exit 0; }   \
-                    || { printf " --> %s\n" "Failed to install packages. Check with your package manager."; aueb; exit 1; }
+                printf " ** Running: %s\n" "${installer["$dist"]} ${packages["common"]} ${packages["$dist"]}"   \
+                    && install_extra && printf " ==> %s\n" "Software ready to use"                              \
+                    || { printf " --> %s\n" "Failed to install packages. Check with your package manager." >&2; exit 1; }
                 ;;
             remove)
                 detect_dist || choose_dist
                 printf " ** Running: %s\n" "${uninstaller["$dist"]} ${packages["common"]} ${packages["$dist"]}" \
-                    && { printf " ==> %s\n" "Software removed"; aueb; exit 0; }          \
-                    || { printf " --> %s\n" "Failed to uninstall packages. Check with your package manager."; aueb; exit 1; }
+                    && uninstall_extra && printf " ==> %s\n" "Software removed"                                 \
+                    || { printf " --> %s\n" "Failed to uninstall packages. Check with your package manager." >&2; exit 1; }
                 ;;
             *)
-                printf " --> Unknown option: %s\n" "$2"
+                printf " --> Unknown option: %s\n" "$2" >&2
                 exit 1
                 ;;
         esac
@@ -140,34 +190,33 @@ case $1 in
 
         case $2 in
             up)
-                create_profile
-                printf " ** Running: %s\n" "wpa_supplicant -Dwext -i${IFACE} -c${wificonf}"       \
-                && printf " ==> %s\n" "Connected to aueb wireless network" \
-                || printf " --> %s\n" "Couldn't connect to wireless network"
+                create_wifi_profile
+                printf " ** Running: %s\n" "wpa_supplicant -Dwext -i${IFACE} -c${wificonf}" \
+                && printf " ==> %s\n" "Connected to aueb wireless network"                  \
+                || printf " --> %s\n" "Couldn't connect to wireless network" >&2
                 ;;
             down)
                 printf " ** Running: %s\n" "ifconfig ${IFACE} down"
                 printf " ==> %s\n" "Disconnected wireless connection"
                 ;;
             *)
-                printf " --> Unknown option: %s\n" "$2"
+                printf " --> Unknown option: %s\n" "$2" >&2
                 exit 1
                 ;;
         esac
         ;;
     help)
         usage
-        exit 0
         ;;
     *)
-        printf " --> Unknown option: %s\n" "$1"
+        printf " --> Unknown option: %s\n" "$1" >&2
         exit 1
         ;;
 esac
+exit
 
 # TODO:
-# -- install/remove --
-# custom packages for: omnet spim xampp quartus nessus
-# -- wifi_toggle --
-# follow output and react <- tailf?
+# custom packages: omnet xampp quartus nessus
+# test wpa_supplicant
 
+# vim: nospell
